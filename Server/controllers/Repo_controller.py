@@ -3,7 +3,7 @@ import uuid
 from github import Github
 from github import Auth
 from sentence_transformers import SentenceTransformer
-from controllers.code_controller import get_file_code, create_chunk
+from controllers.code_controller import extract_function_names, get_file_code, create_chunk, extract_ui_text
 from config.config import GITHUB_TOKEN
 import os
 from qdrant import client
@@ -149,35 +149,65 @@ def create_data_for_embedding(repo_url):
 
 
 def upload_repo_on_qdrant(url):
-    print(f"Starting upload for repo at {url}")
-    repo_name = url.split("github.com/")[1]
+    try:
+        print(f"Starting upload for repo at {url}")
+        repo_name = url.split("github.com/")[1]
 
-    chunk_data = create_data_for_embedding(url)
-    points = []
-    for file in chunk_data["chunk_data"]:
-        path = file["path"]
-        for i, chunk in enumerate(file["chunks"]):
-            search_text = f"{path}\n{chunk}"
-            vec = model.encode(search_text).tolist()
-            points.append(
-                PointStruct(
-                    id=str(uuid.uuid4()),
-                    vector=vec,
-                    payload={
-                        "repo_name": repo_name,
-                        "file_path": path,
-                        "chunk_index": i,
-                        "text": chunk
-                    }
+        chunk_data = create_data_for_embedding(url)
+        points = []
+        for file in chunk_data["chunk_data"]:
+            path = file["path"]
+            for i, chunk in enumerate(file["chunks"]):
+                if path.split("/")[-1] == "README.md":
+                    search_text = f"file: {path.split('/')[-1]} content: {chunk}"
+                    vec = model.encode(search_text).tolist()
+                    points.append(
+                        PointStruct(
+                            id=str(uuid.uuid4()),
+                            vector=vec,
+                            payload={
+                                "repo_name": repo_name,
+                                "file_path": path,
+                                "file_name" : path.split("/")[-1],
+                                "chunk_index": i,
+                                "text": chunk
+                            }
+
+                        )
+
+                    )
+                    continue
+                Functions_name = extract_function_names(chunk, language=path.split(".")[-1])
+                UI_texts = extract_ui_text(chunk)
+                search_text = f"""
+                    file: {path.split("/")[-1]}
+                    functions: {", ".join(Functions_name)}
+                    ui_text: {UI_texts}
+                """
+                vec = model.encode(search_text).tolist()
+                points.append(
+                    PointStruct(
+                        id=str(uuid.uuid4()),
+                        vector=vec,
+                        payload={
+                            "repo_name": repo_name,
+                            "file_path": path,
+                            "file_name" : path.split("/")[-1],
+                            "chunk_index": i,
+                            "text": chunk
+                        }
+
+                    )
 
                 )
+        client.upsert(
+            collection_name="repo_chunks",
+            points=points
+        ) 
 
-            )
-    client.upsert(
-        collection_name="repo_chunks",
-        points=points
-    ) 
-
-    print(f"Upload completed for repo at {url}")
-    
-    return {"message": f"Repo at {url} uploaded successfully"}
+        print(f"Upload completed for repo at {url}")
+        
+        return {"message": f"Repo at {url} uploaded successfully"}
+    except Exception as e:
+        print(f"Error occurred while uploading repo to Qdrant: {e}")
+        return {"error": str(e)}

@@ -139,6 +139,59 @@ def get_file_code(repo, path):
         print(f"Error reading {path}: {e}")
         return None
 
+import re
+
+def extract_function_names(chunk, language):
+    functions = []
+
+    if language == "js" or language == "ts" or language == "jsx" or language == "tsx":
+        # Covers:
+        # function myFunc()
+        # const myFunc = () =>
+        # const myFunc = function()
+        # myFunc: function() {}
+        
+        patterns = [
+            r"function\s+(\w+)\s*\(",                # function myFunc(
+            r"(\w+)\s*=\s*\(?.*\)?\s*=>",           # myFunc = () =>
+            r"(\w+)\s*=\s*function\s*\(",           # myFunc = function(
+            r"(\w+)\s*:\s*function\s*\("            # myFunc: function(
+        ]
+
+        for pattern in patterns:
+            matches = re.findall(pattern, chunk)
+            functions.extend(matches)
+
+    elif language == "python":
+        # Covers:
+        # def my_func(
+        pattern = r"def\s+(\w+)\s*\("
+        functions = re.findall(pattern, chunk)
+
+    return list(set(functions))  # remove duplicates
 
 
+
+def extract_ui_text(chunk):
+    texts = []
+
+    # 1. Text between tags >TEXT<
+    matches = re.findall(r">([^<>]+)<", chunk)
+    for m in matches:
+        clean = m.strip()
+        if clean:
+            texts.append(clean)
+
+    # 2. Option values (important for dropdowns)
+    option_values = re.findall(r"value=['\"]([^'\"]+)['\"]", chunk)
+    texts.extend(option_values)
+
+    # 3. Placeholder / labels
+    placeholders = re.findall(r"placeholder=['\"]([^'\"]+)['\"]", chunk)
+    texts.extend(placeholders)
+
+    # 4. Remove duplicates
+    texts = list(set(texts))
+
+    return " ".join(texts)
 # create_chunk(file_info(path="example.py", type="file", size=2000))

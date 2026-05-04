@@ -3,16 +3,16 @@ from fastapi import FastAPI
 from qdrant_client.models import Document, VectorParams, Distance, PointStruct
 from sentence_transformers import SentenceTransformer
 from upload_worker import enqueue_upload_repo
-from pydanticModels import repoUrl
-
-
+from pydanticModels import repoUrl, sendChatRequest
+from controllers.Chat_controller import upload_chat_to_DB
 from controllers.Repo_controller import get_Readme, search_repos, create_data_for_embedding, upload_repo_on_qdrant
 
 
 app = FastAPI();
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# client.delete_collection(collection_name="test_collection")
+
+# client.delete_collection(collection_name="repo_chunks")
 
 # client.create_collection(
 #     collection_name="repo_chunks",
@@ -47,7 +47,8 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 ### REPO ROUTES ###
 @app.post('/repo')
 def upload_repo(req: repoUrl):
-    return upload_repo_on_qdrant(url = req.url)
+    jobid = enqueue_upload_repo(req.url)
+    return {"message": "Repo upload job enqueued successfully", "job_id": jobid}
 
 @app.delete('/repo')
 def delete_repo(url: repoUrl):
@@ -62,8 +63,15 @@ def fetch_chat(url : repoUrl):
 
 
 @app.post('/chat')
-def post_chat(url : repoUrl, query: str):
-    pass
+def post_chat(req: sendChatRequest):
+    message = {
+        "role" : req.role,
+        "content" : req.query,
+        "conversation_id" : req.conversation_id
+    }
+    db_message = upload_chat_to_DB(message)
+
+    return {"message": "Chat message uploaded successfully", "db_message": db_message}
 
 
 # points = []

@@ -13,3 +13,8 @@ def enqueue_upload_repo(url: str):
     print(f"Job ID: {job.id}")
     print(f"Current Queue Count: {q.count}")
     return job.id
+
+
+
+
+# rq worker --worker-class rq.worker.SimpleWorker

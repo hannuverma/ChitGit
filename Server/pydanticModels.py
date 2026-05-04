@@ -16,3 +16,22 @@ class RepoChunks(BaseModel):
 
 class repoUrl(BaseModel):
     url: str
+
+
+class Conversation(BaseModel):
+    id: Optional[int] = None
+    repo_url: str
+    messages: List[ChatMessage]
+
+class Message(BaseModel):
+    id: Optional[int] = None
+    conversation_id: int
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class sendChatRequest(BaseModel):
+    repo_url: str
+    query: str
+    role: Literal["user", "assistant"]
+    conversation_id: int
