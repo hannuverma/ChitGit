@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import SQLModel, Session, create_engine, select
 from Model import Conversation as ConversationTable, Message as MessageTable
 from pydanticModels import Message as MessageSchema
 
@@ -26,3 +26,12 @@ def upload_chat_to_DB(message: MessageSchema):
         session.commit()
         session.refresh(db_message)
     return db_message
+
+
+def getRepoNameFromConversationId(conversation_id: int):
+    with Session(engine) as session:
+        conversation = session.exec(select(ConversationTable).where(ConversationTable.id == conversation_id)).first()
+        if conversation:
+            return conversation.repo_name
+        else:
+            return None

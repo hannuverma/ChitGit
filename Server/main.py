@@ -5,11 +5,18 @@ from sentence_transformers import SentenceTransformer
 from upload_worker import enqueue_upload_repo
 from pydanticModels import repoUrl, sendChatRequest, Message as MessageSchema
 from controllers.Chat_controller import upload_chat_to_DB, create_conversation
+from controllers.Repo_controller import search_in_repo, ensure_repo_chunks_collection
+from controllers.Ai_first_layer import get_query_enhanced
 # from controllers.Repo_controller import get_Readme, search_repos, create_data_for_embedding, upload_repo_on_qdrant
 
 
 app = FastAPI();
 model = SentenceTransformer("all-MiniLM-L6-v2")
+
+
+@app.on_event("startup")
+def prepare_qdrant_indexes():
+    ensure_repo_chunks_collection()
 
 
 # client.delete_collection(collection_name="repo_chunks")
@@ -66,8 +73,9 @@ def fetch_chat(url : repoUrl):
 @app.post('/chat')
 def post_chat(req: MessageSchema):
     db_message = upload_chat_to_DB(req)
-
-    return {"message": "Chat message uploaded successfully", "db_message": db_message}
+    search_result = search_in_repo(req.content, req.conversation_id, top_k = 17)
+    enhanced_user_query = get_query_enhanced(req.content)
+    return {"message": "Chat message uploaded successfully", "enhanced_query": enhanced_user_query, "db_message": db_message, "search_result": search_result}
 
 
 # points = []

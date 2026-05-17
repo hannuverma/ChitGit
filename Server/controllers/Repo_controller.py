@@ -3,11 +3,12 @@ import uuid
 from github import Github
 from github import Auth
 from sentence_transformers import SentenceTransformer
+from controllers.Chat_controller import getRepoNameFromConversationId
 from controllers.code_controller import extract_function_names, get_file_code, create_chunk, extract_ui_text
 from config.config import GITHUB_TOKEN
 import os
 from qdrant import client
-from qdrant_client.models import Document, VectorParams, Distance, PointStruct
+from qdrant_client.models import Document, VectorParams, Distance, PointStruct, PayloadSchemaType
 
 auth = Auth.Token(GITHUB_TOKEN)
 
@@ -52,6 +53,45 @@ IGNORE_EXTENSIONS = {
 }
 
 
+def normalize_repo_name(repo_url: str) -> str:
+    return repo_url.split("github.com/")[-1].removesuffix(".git").rstrip("/")
+
+
+def ensure_repo_chunks_collection():
+    if not client.collection_exists(collection_name="repo_chunks"):
+        client.create_collection(
+            collection_name="repo_chunks",
+            vectors_config=VectorParams(
+                size=384,
+                distance=Distance.COSINE,
+            ),
+        )
+
+    collection_info = client.get_collection(collection_name="repo_chunks")
+    repo_name_index = collection_info.payload_schema.get("repo_name")
+
+    if not repo_name_index or repo_name_index.data_type != PayloadSchemaType.KEYWORD:
+        client.create_payload_index(
+            collection_name="repo_chunks",
+            field_name="repo_name",
+            field_schema=PayloadSchemaType.KEYWORD,
+        )
+
+
+def upsert_repo_chunks(points):
+    try:
+        client.upsert(
+            collection_name="repo_chunks",
+            points=points,
+        )
+    except Exception:
+        ensure_repo_chunks_collection()
+        client.upsert(
+            collection_name="repo_chunks",
+            points=points,
+        )
+
+
 def search_repos(query):
     try:
         repos = g.search_repositories(query=query)
@@ -73,7 +113,7 @@ def search_repos(query):
 
 def get_Readme(repo_url):
     try:
-        repo_name = repo_url.split("github.com/")[1]
+        repo_name = normalize_repo_name(repo_url)
         # print(f"Fetching README for repo: {repo_name}") #debugging log
         repo = g.get_repo(repo_name)
         readme = repo.get_readme()
@@ -85,7 +125,7 @@ def get_Readme(repo_url):
 
 def create_data_for_embedding(repo_url):
     try:
-        repo_name = repo_url.split("github.com/")[1]
+        repo_name = normalize_repo_name(repo_url)
         # print(f"Fetching file tree for repo: {repo_name}") #debugging log
         repo = g.get_repo(repo_name)
         contents = repo.get_contents("")
@@ -151,7 +191,9 @@ def create_data_for_embedding(repo_url):
 def upload_repo_on_qdrant(url):
     try:
         print(f"Starting upload for repo at {url}")
-        repo_name = url.split("github.com/")[1]
+        repo_name = normalize_repo_name(url)
+
+        ensure_repo_chunks_collection()
 
         chunk_data = create_data_for_embedding(url)
         points = []
@@ -177,6 +219,7 @@ def upload_repo_on_qdrant(url):
 
                     )
                     continue
+                
                 Functions_name = extract_function_names(chunk, language=path.split(".")[-1])
                 UI_texts = extract_ui_text(chunk)
                 search_text = f"""
@@ -200,14 +243,50 @@ def upload_repo_on_qdrant(url):
                     )
 
                 )
-        client.upsert(
-            collection_name="repo_chunks",
-            points=points
-        ) 
+        upsert_repo_chunks(points)
 
         print(f"Upload completed for repo at {url}")
         
         return {"message": f"Repo at {url} uploaded successfully"}
     except Exception as e:
         print(f"Error occurred while uploading repo to Qdrant: {e}")
+        return {"error": str(e)}
+    
+
+def search_in_repo(query, conversation_id, top_k=5):
+    try:
+        ensure_repo_chunks_collection()
+
+        repo_name = getRepoNameFromConversationId(conversation_id)
+
+        if not repo_name:
+            raise ValueError(
+                f"No conversation found with id: {conversation_id}"
+            )
+
+        search_text = f"repo: {repo_name}\n{query}"
+
+        vec = model.encode(search_text).tolist()
+
+        search_result = client.query_points(
+            collection_name="repo_chunks",
+            query=vec,
+            limit=top_k,
+            with_payload=True,
+            query_filter={
+                "must": [
+                    {
+                        "key": "repo_name",
+                        "match": {
+                            "value": repo_name
+                        }
+                    }
+                ]
+            }
+        )
+
+        return search_result
+
+    except Exception as e:
+        print(f"Error occurred while searching in repo: {e}")
         return {"error": str(e)}
