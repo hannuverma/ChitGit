@@ -50,4 +50,66 @@ def get_query_enhanced(query: str):
         )
 
     print(response.choices[0].message.content)
+    enhanced_query = response.choices[0].message.content
+    return f"{ query } { enhanced_query}"
+
+
+
+
+def final_ai_response(context: str, query: str):
+    SYSTEM_PROMPT = """
+You are an expert repository assistant.
+
+Your task:
+- Answer ONLY using the provided repository context.
+- Be precise and technical.
+- Mention file names and relevant functionality when possible.
+- Do not hallucinate features, files, or APIs.
+- If the answer is not clearly present in the context, say:
+  "I could not find enough information in the repository context."
+
+Guidelines:
+- Prefer concise but complete answers.
+- Explain where functionality is implemented.
+- Mention important files and routes.
+- For authentication/security questions, mention middleware, protected routes, JWT usage, etc.
+- For frontend questions, mention components/pages/hooks involved.
+- For backend questions, mention routes/services/middleware/models involved.
+- If multiple files contribute to the feature, summarize their roles.
+
+Response style:
+- Clear
+- Developer-focused
+- Structured
+- No unnecessary fluff
+"""
+
+    USER_PROMPT = f"""
+# USER QUESTION
+{query}
+
+# REPOSITORY CONTEXT
+{context}
+
+# INSTRUCTIONS
+Answer the user question strictly from the repository context.
+"""
+
+    with OpenRouter(api_key=OPENROUTER_API_KEY) as client:
+        response = client.chat.send(
+            model="openai/gpt-oss-120b:free",
+            messages=[
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT
+                },
+                {
+                    "role": "user",
+                    "content": USER_PROMPT
+                }
+            ],
+            temperature=0.2,
+            max_tokens=500,
+        )
+    print(response.choices[0])
     return response.choices[0].message.content

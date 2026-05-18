@@ -6,7 +6,8 @@ from upload_worker import enqueue_upload_repo
 from pydanticModels import repoUrl, sendChatRequest, Message as MessageSchema
 from controllers.Chat_controller import upload_chat_to_DB, create_conversation
 from controllers.Repo_controller import search_in_repo, ensure_repo_chunks_collection
-from controllers.Ai_first_layer import get_query_enhanced
+from controllers.Ai_first_layer import get_query_enhanced,final_ai_response
+import json
 # from controllers.Repo_controller import get_Readme, search_repos, create_data_for_embedding, upload_repo_on_qdrant
 
 
@@ -73,9 +74,14 @@ def fetch_chat(url : repoUrl):
 @app.post('/chat')
 def post_chat(req: MessageSchema):
     db_message = upload_chat_to_DB(req)
-    search_result = search_in_repo(req.content, req.conversation_id, top_k = 17)
     enhanced_user_query = get_query_enhanced(req.content)
-    return {"message": "Chat message uploaded successfully", "enhanced_query": enhanced_user_query, "db_message": db_message, "search_result": search_result}
+    search_result = search_in_repo(enhanced_user_query, req.conversation_id, top_k = 10)
+    string_search_result = ""
+    for res in search_result:
+        string_search_result += f"{res}\n"
+    
+    Final_ai = final_ai_response(string_search_result, req.content)
+    return {"message": "Chat message uploaded successfully", "enhanced_query": enhanced_user_query, "db_message": db_message, "search_result": search_result, "final_ai_answer": Final_ai}
 
 
 # points = []
