@@ -35,3 +35,9 @@ def getRepoNameFromConversationId(conversation_id: int):
             return conversation.repo_name
         else:
             return None
+        
+
+def fetch_all_conversations():
+    with Session(engine) as session:
+        conversations = session.exec(select(ConversationTable)).all()
+        return conversations

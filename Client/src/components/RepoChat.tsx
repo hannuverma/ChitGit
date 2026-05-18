@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 
 interface RepoChatProps {
 	repoName: string;
+	conversationId: number;
 }
 
 interface Message {
@@ -11,12 +12,12 @@ interface Message {
 	timestamp: Date;
 }
 
-const RepoChat = ({ repoName }: RepoChatProps) => {
+const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [inputValue, setInputValue] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
-
+	console.log("Conversation ID:", conversationId, repoName); // Debugging log
 	// Auto-scroll to bottom when messages change
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

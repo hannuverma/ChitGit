@@ -2,16 +2,26 @@ from qdrant import client
 from fastapi import FastAPI
 from qdrant_client.models import Document, VectorParams, Distance, PointStruct
 from sentence_transformers import SentenceTransformer
-from upload_worker import enqueue_upload_repo
+from upload_worker import enqueue_upload_repo, get_job_status
 from pydanticModels import repoUrl, sendChatRequest, Message as MessageSchema
 from controllers.Chat_controller import upload_chat_to_DB, create_conversation
-from controllers.Repo_controller import search_in_repo, ensure_repo_chunks_collection
+from controllers.Repo_controller import search_in_repo, ensure_repo_chunks_collection, fetch_all_repos
 from controllers.Ai_first_layer import get_query_enhanced,final_ai_response
-import json
-# from controllers.Repo_controller import get_Readme, search_repos, create_data_for_embedding, upload_repo_on_qdrant
+from fastapi.middleware.cors import CORSMiddleware
 
-
+origins = {
+    "http://localhost:5173", 
+}
 app = FastAPI();
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
@@ -63,7 +73,16 @@ def upload_repo(req: repoUrl):
 def delete_repo(url: repoUrl):
     pass
 
+@app.get('/all-repos')
+def get_all_repos():
+    return fetch_all_repos()
 
+
+### JOB STATUS ###
+@app.get('/job/{job_id}')
+def job_status(job_id:str):
+    status = get_job_status(job_id)
+    return {"job_id": job_id, "status": status, "completed": status.get("status") == "finished"}
 
 ### CHAT ROUTES ###
 @app.get('/chat')

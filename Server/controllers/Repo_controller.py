@@ -3,7 +3,7 @@ import uuid
 from github import Github
 from github import Auth
 from sentence_transformers import SentenceTransformer
-from controllers.Chat_controller import getRepoNameFromConversationId
+from controllers.Chat_controller import getRepoNameFromConversationId, fetch_all_conversations
 from controllers.code_controller import extract_function_names, get_file_code, create_chunk, extract_ui_text
 from config.config import GITHUB_TOKEN
 import os
@@ -289,4 +289,13 @@ def search_in_repo(query, conversation_id, top_k=5):
 
     except Exception as e:
         print(f"Error occurred while searching in repo: {e}")
+        return {"error": str(e)}
+    
+
+def fetch_all_repos():
+    try:
+        converasations = fetch_all_conversations()
+        return [{"conversation_id": conv.id, "repo_name": conv.repo_name} for conv in converasations]
+    except Exception as e:
+        print(f"Error occurred while fetching all repos: {e}")
         return {"error": str(e)}
