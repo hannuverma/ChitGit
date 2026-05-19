@@ -4,7 +4,7 @@ from qdrant_client.models import Document, VectorParams, Distance, PointStruct
 from sentence_transformers import SentenceTransformer
 from upload_worker import enqueue_upload_repo, get_job_status
 from pydanticModels import repoUrl, sendChatRequest, Message as MessageSchema
-from controllers.Chat_controller import upload_chat_to_DB, create_conversation
+from controllers.Chat_controller import fetch_all_messages_for_conversation, upload_chat_to_DB, create_conversation
 from controllers.Repo_controller import search_in_repo, ensure_repo_chunks_collection, fetch_all_repos
 from controllers.Ai_first_layer import get_query_enhanced,final_ai_response
 from fastapi.middleware.cors import CORSMiddleware
@@ -85,9 +85,9 @@ def job_status(job_id:str):
     return {"job_id": job_id, "status": status, "completed": status.get("status") == "finished"}
 
 ### CHAT ROUTES ###
-@app.get('/chat')
-def fetch_chat(url : repoUrl):
-    pass
+@app.get('/chat/{conversation_id}')
+def fetch_chat(conversation_id: int):
+    return fetch_all_messages_for_conversation(conversation_id)
 
 
 @app.post('/chat')
@@ -100,7 +100,15 @@ def post_chat(req: MessageSchema):
         string_search_result += f"{res}\n"
     
     Final_ai = final_ai_response(string_search_result, req.content)
-    return {"message": "Chat message uploaded successfully", "enhanced_query": enhanced_user_query, "db_message": db_message, "search_result": search_result, "final_ai_answer": Final_ai}
+
+    AiResponse = MessageSchema(
+    conversation_id=req.conversation_id,
+    role="assistant",
+    content=Final_ai
+)
+
+    db_message_2 = upload_chat_to_DB(AiResponse)
+    return {"message": "Chat message uploaded successfully", "enhanced_query": enhanced_user_query, "db_message": db_message, "search_result": search_result, "final_ai_answer": Final_ai, "db_message_2": db_message_2}
 
 
 # points = []

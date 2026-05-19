@@ -11,7 +11,7 @@ interface RepoChatProps {
 interface Message {
 	id: string;
 	text: string;
-	sender: "user" | "bot";
+	sender: "user" | "assistant";
 	timestamp: Date;
 }
 
@@ -22,10 +22,31 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	console.log("Conversation ID:", conversationId, repoName); // Debugging log
 	// Auto-scroll to bottom when messages change
-	useEffect(() => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages]);
+	// useEffect(() => {
+	// 	messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+	// }, [messages]);
 
+	useEffect(() => {
+		const fetchChatHistory = async () => {
+			if (!conversationId) return;
+			try {
+				const response = await api.get(`/chat/${conversationId}`);
+				const fetchedMessages = response.data.map((msg: any) => ({
+					id: `msg-${msg.id}`,
+					text: msg.content,
+					sender: msg.role,
+					timestamp: new Date(msg.created_at),
+				}));
+				setMessages(fetchedMessages);
+			} catch (error) {
+				console.error("Error fetching chat history:", error);
+				setMessages([]);
+				setIsLoading(false);
+			}
+		};
+
+		fetchChatHistory();
+	}, [conversationId]);
 	const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
@@ -52,7 +73,7 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 		const botMessage: Message = {
 			id: `msg-${Date.now() + 1}`,
 			text: Response.data.final_ai_answer,
-			sender: "bot",
+			sender: "assistant",
 			timestamp: new Date(),
 		};
 		setMessages((prev) => [...prev, botMessage]);
@@ -63,7 +84,7 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 		// 	const botMessage: Message = {
 		// 		id: `msg-${Date.now() + 1}`,
 		// 		text: `Response to: "${userMessage.text}"`,
-		// 		sender: "bot",
+		// 		sender: "assistant",
 		// 		timestamp: new Date(),
 		// 	};
 		// 	setMessages((prev) => [...prev, botMessage]);
@@ -103,7 +124,7 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 									: "bg-gray-800 text-gray-100 rounded-bl-none border border-gray-700"
 							}`}
 						>
-							{message.sender === "bot" ? (
+							{message.sender === "assistant" ? (
 								<ReactMarkdown remarkPlugins={[remarkGfm]}>
 									{message.text}
 								</ReactMarkdown>

@@ -41,3 +41,9 @@ def fetch_all_conversations():
     with Session(engine) as session:
         conversations = session.exec(select(ConversationTable)).all()
         return conversations
+    
+
+def fetch_all_messages_for_conversation(conversation_id: int):
+    with Session(engine) as session:
+        messages = session.exec(select(MessageTable).where(MessageTable.conversation_id == conversation_id)).all()
+        return messages
