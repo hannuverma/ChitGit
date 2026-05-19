@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from "react";
+import api from "../Api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface RepoChatProps {
 	repoName: string;
@@ -40,17 +43,32 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 		setInputValue("");
 		setIsLoading(true);
 
+		const Response = await api.post("/chat", {
+			conversation_id: conversationId,
+			role: "user",
+			content: String(inputValue),
+		});
+
+		const botMessage: Message = {
+			id: `msg-${Date.now() + 1}`,
+			text: Response.data.final_ai_answer,
+			sender: "bot",
+			timestamp: new Date(),
+		};
+		setMessages((prev) => [...prev, botMessage]);
+		setIsLoading(false);
+
 		// Simulate API call - replace with actual server call
-		setTimeout(() => {
-			const botMessage: Message = {
-				id: `msg-${Date.now() + 1}`,
-				text: `Response to: "${userMessage.text}"`,
-				sender: "bot",
-				timestamp: new Date(),
-			};
-			setMessages((prev) => [...prev, botMessage]);
-			setIsLoading(false);
-		}, 1500);
+		// setTimeout(() => {
+		// 	const botMessage: Message = {
+		// 		id: `msg-${Date.now() + 1}`,
+		// 		text: `Response to: "${userMessage.text}"`,
+		// 		sender: "bot",
+		// 		timestamp: new Date(),
+		// 	};
+		// 	setMessages((prev) => [...prev, botMessage]);
+		// 	setIsLoading(false);
+		// }, 1500);
 	};
 
 	return (
@@ -85,7 +103,14 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 									: "bg-gray-800 text-gray-100 rounded-bl-none border border-gray-700"
 							}`}
 						>
-							<p className='text-xl'>{message.text}</p>
+							{message.sender === "bot" ? (
+								<ReactMarkdown remarkPlugins={[remarkGfm]}>
+									{message.text}
+								</ReactMarkdown>
+							) : (
+								<p className='text-xl'>{message.text}</p>
+							)}
+
 							<span className='text-lg mt-1 block opacity-60'>
 								{message.timestamp.toLocaleTimeString([], {
 									hour: "2-digit",
