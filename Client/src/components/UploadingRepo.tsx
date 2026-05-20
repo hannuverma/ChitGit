@@ -18,16 +18,26 @@ const UploadingRepo = ({
 		if (!jobId) return;
 
 		const interval = setInterval(async () => {
-			const res = await api.get(`/job/${jobId}`);
-			const currentStatus = res.data.status["status"];
+			try {
+				const res = await api.get(`/job/${jobId}`);
+				const currentStatus = res.data?.status?.status;
 
-			setStatus(currentStatus);
+				if (currentStatus) {
+					setStatus(currentStatus);
+				}
 
-			if (currentStatus === "finished" || currentStatus === "failed") {
+				if (currentStatus === "finished" || currentStatus === "failed") {
+					clearInterval(interval);
+					setUploading(false);
+					setNewRepo(true);
+					onUploadComplete();
+				}
+			} catch (error) {
+				console.error("Error checking upload status:", error);
 				clearInterval(interval);
+				setStatus("failed");
 				setUploading(false);
 				setNewRepo(true);
-				onUploadComplete();
 			}
 		}, 6000);
 

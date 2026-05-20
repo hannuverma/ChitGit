@@ -1,10 +1,16 @@
 from sqlmodel import SQLModel, Session, create_engine, select
 from Model import Conversation as ConversationTable, Message as MessageTable
 from pydanticModels import Message as MessageSchema
+from config.config import DATABASE_URL
 
 
-engine = create_engine("sqlite:///database.db")
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,
+    pool_pre_ping=True
+)
 SQLModel.metadata.create_all(engine)
+
 
 def create_conversation(repo_url:str):
     repo_name = repo_url.split('github.com/')[-1].removesuffix('.git')

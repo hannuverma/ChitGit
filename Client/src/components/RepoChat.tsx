@@ -15,10 +15,23 @@ interface Message {
 	timestamp: Date;
 }
 
+const getErrorMessage = (error: unknown) => {
+	if (typeof error === "object" && error !== null && "response" in error) {
+		const response = (error as { response?: { data?: any } }).response;
+		const data = response?.data;
+		return (
+			data?.detail || data?.message || data?.error || "Something went wrong."
+		);
+	}
+
+	return "Something went wrong.";
+};
+
 const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [inputValue, setInputValue] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	console.log("Conversation ID:", conversationId, repoName); // Debugging log
 	// Auto-scroll to bottom when messages change
@@ -29,6 +42,7 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 	useEffect(() => {
 		const fetchChatHistory = async () => {
 			if (!conversationId) return;
+			setError(null);
 			try {
 				const response = await api.get(`/chat/${conversationId}`);
 				const fetchedMessages = response.data.map((msg: any) => ({
@@ -41,6 +55,7 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 			} catch (error) {
 				console.error("Error fetching chat history:", error);
 				setMessages([]);
+				setError(getErrorMessage(error));
 				setIsLoading(false);
 			}
 		};
@@ -51,6 +66,7 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 		e.preventDefault();
 
 		if (!inputValue.trim()) return;
+		setError(null);
 
 		// Add user message
 		const userMessage: Message = {
@@ -64,20 +80,34 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 		setInputValue("");
 		setIsLoading(true);
 
-		const Response = await api.post("/chat", {
-			conversation_id: conversationId,
-			role: "user",
-			content: String(inputValue),
-		});
+		try {
+			const response = await api.post("/chat", {
+				conversation_id: conversationId,
+				role: "user",
+				content: String(inputValue),
+			});
 
-		const botMessage: Message = {
-			id: `msg-${Date.now() + 1}`,
-			text: Response.data.final_ai_answer,
-			sender: "assistant",
-			timestamp: new Date(),
-		};
-		setMessages((prev) => [...prev, botMessage]);
-		setIsLoading(false);
+			const answer = response.data?.final_ai_answer;
+			if (!answer) {
+				throw new Error("The server returned an empty response.");
+			}
+
+			const botMessage: Message = {
+				id: `msg-${Date.now() + 1}`,
+				text: String(answer),
+				sender: "assistant",
+				timestamp: new Date(),
+			};
+			setMessages((prev) => [...prev, botMessage]);
+		} catch (error) {
+			console.error("Error sending chat message:", error);
+			setMessages((prev) =>
+				prev.filter((message) => message.id !== userMessage.id),
+			);
+			setError(getErrorMessage(error));
+		} finally {
+			setIsLoading(false);
+		}
 
 		// Simulate API call - replace with actual server call
 		// setTimeout(() => {
@@ -98,6 +128,12 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 			<div className='bg-gray-800 border-b border-gray-700 p-4'>
 				<h2 className='text-lg font-semibold'>Chat - {repoName}</h2>
 			</div>
+
+			{error && (
+				<div className='border-b border-red-900 bg-red-950/60 px-4 py-3 text-sm text-red-200'>
+					{error}
+				</div>
+			)}
 
 			{/* Messages Container */}
 			<div className='flex-1 overflow-y-auto p-4 space-y-4'>

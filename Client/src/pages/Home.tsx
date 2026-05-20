@@ -9,6 +9,7 @@ const Home = () => {
 	const [currRepo, setCurrRepo] = useState<string | null>(null);
 	const [newRepo, setNewRepo] = useState<boolean | null>(true);
 	const [conversation, setConversation] = useState<number | null>(null);
+	const [repoError, setRepoError] = useState<string | null>(null);
 
 	interface reposInterface {
 		repo_name: string;
@@ -16,10 +17,17 @@ const Home = () => {
 	}
 	const [repos, setRepos] = useState<reposInterface[]>([]);
 
-	const fetchRepos = () => {
-		api.get("/all-repos").then((res) => {
-			setRepos(res.data);
-		});
+	const fetchRepos = async () => {
+		setRepoError(null);
+
+		try {
+			const res = await api.get("/all-repos");
+			setRepos(Array.isArray(res.data) ? res.data : []);
+		} catch (error) {
+			console.error("Error fetching repositories:", error);
+			setRepos([]);
+			setRepoError("Unable to load repositories right now.");
+		}
 	};
 
 	useEffect(() => {
@@ -45,6 +53,11 @@ const Home = () => {
 			</SignOutButton>
 			<div className='w-[25vw] bg-gray-900 rounded-3xl p-4 text-3xl relative'>
 				<h1 className='text-center mb-4 text-7xl'>ChitGit</h1>
+				{repoError && (
+					<div className='mb-3 rounded-2xl border border-red-900 bg-red-950/60 px-3 py-2 text-sm text-red-200'>
+						{repoError}
+					</div>
+				)}
 				<p
 					className='text-right text-xl mb-2 bg-gray-800 p-2 rounded-lg capitalize hover:bg-gray-700 cursor-pointer flex gap-3 justify-between'
 					onClick={newRepoClickHandler}

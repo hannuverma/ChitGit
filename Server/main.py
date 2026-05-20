@@ -1,5 +1,5 @@
 from qdrant import client
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from qdrant_client.models import Document, VectorParams, Distance, PointStruct
 from sentence_transformers import SentenceTransformer
 from upload_worker import enqueue_upload_repo, get_job_status
@@ -92,21 +92,25 @@ def fetch_chat(conversation_id: int):
 
 @app.post('/chat')
 def post_chat(req: MessageSchema):
+    try:
+        enhanced_user_query = get_query_enhanced(req.content)
+        search_result = search_in_repo(enhanced_user_query, req.conversation_id, top_k = 10)
+        string_search_result = ""
+        for res in search_result:
+            string_search_result += f"{res}\n"
+        
+        Final_ai = final_ai_response(string_search_result, req.content)
+
+        AiResponse = MessageSchema(
+        conversation_id=req.conversation_id,
+        role="assistant",
+        content=Final_ai
+        )
+    except Exception as e:
+        print(f"Error occurred while processing chat message: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while processing the chat message.")
+
     db_message = upload_chat_to_DB(req)
-    enhanced_user_query = get_query_enhanced(req.content)
-    search_result = search_in_repo(enhanced_user_query, req.conversation_id, top_k = 10)
-    string_search_result = ""
-    for res in search_result:
-        string_search_result += f"{res}\n"
-    
-    Final_ai = final_ai_response(string_search_result, req.content)
-
-    AiResponse = MessageSchema(
-    conversation_id=req.conversation_id,
-    role="assistant",
-    content=Final_ai
-)
-
     db_message_2 = upload_chat_to_DB(AiResponse)
     return {"message": "Chat message uploaded successfully", "enhanced_query": enhanced_user_query, "db_message": db_message, "search_result": search_result, "final_ai_answer": Final_ai, "db_message_2": db_message_2}
 
