@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import api from "../Api";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 interface RepoChatProps {
@@ -14,6 +14,113 @@ interface Message {
 	sender: "user" | "assistant";
 	timestamp: Date;
 }
+
+const markdownComponents: Components = {
+	p: ({ children }) => (
+		<p className='m-0 whitespace-pre-wrap wrap-break-word text-sm leading-7 text-gray-100'>
+			{children}
+		</p>
+	),
+	h1: ({ children }) => (
+		<h1 className='mt-0 mb-3 text-2xl font-semibold tracking-tight text-white'>
+			{children}
+		</h1>
+	),
+	h2: ({ children }) => (
+		<h2 className='mt-5 mb-2 text-xl font-semibold tracking-tight text-white'>
+			{children}
+		</h2>
+	),
+	h3: ({ children }) => (
+		<h3 className='mt-4 mb-2 text-lg font-semibold tracking-tight text-white'>
+			{children}
+		</h3>
+	),
+	h4: ({ children }) => (
+		<h4 className='mt-4 mb-2 text-base font-semibold tracking-tight text-white'>
+			{children}
+		</h4>
+	),
+	ul: ({ children }) => (
+		<ul className='my-3 list-disc space-y-1 pl-5 text-sm leading-7 text-gray-100'>
+			{children}
+		</ul>
+	),
+	ol: ({ children }) => (
+		<ol className='my-3 list-decimal space-y-1 pl-5 text-sm leading-7 text-gray-100'>
+			{children}
+		</ol>
+	),
+	li: ({ children }) => <li className='wrap-break-word'>{children}</li>,
+	blockquote: ({ children }) => (
+		<blockquote className='my-4 border-l-4 border-blue-500 bg-gray-800/70 px-4 py-3 text-sm leading-7 text-gray-200'>
+			{children}
+		</blockquote>
+	),
+	strong: ({ children }) => (
+		<strong className='font-semibold text-white'>{children}</strong>
+	),
+	em: ({ children }) => <em className='italic text-gray-50'>{children}</em>,
+	a: ({ children, href }) => (
+		<a
+			href={href}
+			target='_blank'
+			rel='noreferrer'
+			className='wrap-break-word text-blue-300 underline decoration-blue-400/70 underline-offset-4 hover:text-blue-200'
+		>
+			{children}
+		</a>
+	),
+	code: ({ children, className, ...props }) => {
+		if (!className) {
+			return (
+				<code
+					className='rounded-md bg-gray-950/80 px-1.5 py-0.5 font-mono text-[0.9em] text-blue-200 ring-1 ring-gray-700/80'
+					{...props}
+				>
+					{children}
+				</code>
+			);
+		}
+
+		return (
+			<code
+				className={`${className ?? ""} block overflow-x-auto rounded-lg bg-gray-950 px-4 py-3 font-mono text-sm leading-6 text-gray-100`}
+				{...props}
+			>
+				{children}
+			</code>
+		);
+	},
+	pre: ({ children }) => (
+		<pre className='my-4 max-w-full overflow-x-auto rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-sm leading-6 text-gray-100'>
+			{children}
+		</pre>
+	),
+	table: ({ children }) => (
+		<div className='my-4 max-w-full overflow-x-auto rounded-xl border border-gray-700 bg-gray-900/80'>
+			<table className='min-w-full border-collapse text-left text-sm text-gray-100'>
+				{children}
+			</table>
+		</div>
+	),
+	thead: ({ children }) => (
+		<thead className='bg-gray-800 text-gray-50'>{children}</thead>
+	),
+	tr: ({ children }) => (
+		<tr className='border-b border-gray-700 last:border-b-0'>{children}</tr>
+	),
+	th: ({ children }) => (
+		<th className='border-r border-gray-700 px-3 py-2 align-top font-semibold last:border-r-0'>
+			{children}
+		</th>
+	),
+	td: ({ children }) => (
+		<td className='border-r border-gray-700 px-3 py-2 align-top last:border-r-0'>
+			{children}
+		</td>
+	),
+};
 
 const getErrorMessage = (error: unknown) => {
 	if (typeof error === "object" && error !== null && "response" in error) {
@@ -123,7 +230,7 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 	};
 
 	return (
-		<div className='flex flex-col h-full bg-gray-900 text-gray-100 rounded-lg'>
+		<div className='flex h-full min-w-0 flex-col overflow-hidden rounded-lg bg-gray-900 text-gray-100'>
 			{/* Header */}
 			<div className='bg-gray-800 border-b border-gray-700 p-4'>
 				<h2 className='text-lg font-semibold'>Chat - {repoName}</h2>
@@ -136,7 +243,7 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 			)}
 
 			{/* Messages Container */}
-			<div className='flex-1 overflow-y-auto p-4 space-y-4'>
+			<div className='flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 min-w-0'>
 				{messages.length === 0 && !isLoading && (
 					<div className='flex items-center justify-center h-full text-gray-500'>
 						<div className='text-center'>
@@ -151,24 +258,31 @@ const RepoChat = ({ repoName, conversationId }: RepoChatProps) => {
 				{messages.map((message) => (
 					<div
 						key={message.id}
-						className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+						className={`flex min-w-0 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
 					>
 						<div
-							className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+							className={`min-w-0 max-w-full sm:max-w-[85%] px-4 py-3 rounded-lg overflow-hidden ${
 								message.sender === "user"
 									? "bg-blue-600 text-white rounded-br-none"
 									: "bg-gray-800 text-gray-100 rounded-bl-none border border-gray-700"
 							}`}
 						>
 							{message.sender === "assistant" ? (
-								<ReactMarkdown remarkPlugins={[remarkGfm]}>
-									{message.text}
-								</ReactMarkdown>
+								<div className='min-w-0 space-y-3'>
+									<ReactMarkdown
+										remarkPlugins={[remarkGfm]}
+										components={markdownComponents}
+									>
+										{message.text}
+									</ReactMarkdown>
+								</div>
 							) : (
-								<p className='text-xl'>{message.text}</p>
+								<p className='text-sm leading-6 whitespace-pre-wrap wrap-break-word'>
+									{message.text}
+								</p>
 							)}
 
-							<span className='text-lg mt-1 block opacity-60'>
+							<span className='mt-2 block text-xs text-gray-400'>
 								{message.timestamp.toLocaleTimeString([], {
 									hour: "2-digit",
 									minute: "2-digit",
