@@ -2,7 +2,7 @@ import time
 import uuid
 from github import Github
 from github import Auth
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 from controllers.Chat_controller import getRepoNameFromConversationId, fetch_all_conversations
 from controllers.code_controller import extract_function_names, get_file_code, create_chunk, extract_ui_text
 from config.config import GITHUB_TOKEN
@@ -20,8 +20,12 @@ _model = None
 def get_model():
     global _model
     if _model is None:
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        _model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
     return _model
+
+def encode(text: str) -> list:
+    """Encode a single text string into a vector using fastembed."""
+    return list(get_model().embed([text]))[0].tolist()
 
 
 IGNORE_DIRS = {
@@ -208,7 +212,7 @@ def upload_repo_on_qdrant(url):
             for i, chunk in enumerate(file["chunks"]):
                 if path.split("/")[-1] == "README.md":
                     search_text = f"file: {path.split('/')[-1]} content: {chunk}"
-                    vec = get_model().encode(search_text).tolist()
+                    vec = encode(search_text)
                     points.append(
                         PointStruct(
                             id=str(uuid.uuid4()),
@@ -233,7 +237,7 @@ def upload_repo_on_qdrant(url):
                     functions: {", ".join(Functions_name)}
                     ui_text: {UI_texts}
                 """
-                vec = get_model().encode(search_text).tolist()
+                vec = encode(search_text)
                 points.append(
                     PointStruct(
                         id=str(uuid.uuid4()),
@@ -272,7 +276,7 @@ def search_in_repo(query, conversation_id, top_k=5):
 
         search_text = f"repo: {repo_name}\n{query}"
 
-        vec = get_model().encode(search_text).tolist()
+        vec = encode(search_text)
 
         search_result = client.query_points(
             collection_name="repo_chunks",
