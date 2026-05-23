@@ -30,7 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Defer heavy model loading to controllers which will lazy-load when needed
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 @app.on_event("startup")

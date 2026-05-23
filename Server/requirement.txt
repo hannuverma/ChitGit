@@ -110,7 +110,6 @@ upstash-redis==1.7.0
 urllib3==2.7.0
 uuid_utils==0.14.1
 uvicorn==0.46.0
-gunicorn==22.2.0
 websockets==16.0
 Werkzeug==3.1.8
 xxhash==3.7.0

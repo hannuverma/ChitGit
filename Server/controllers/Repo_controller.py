@@ -2,15 +2,7 @@ import time
 import uuid
 from github import Github
 from github import Auth
-# Defer heavy model import until it's needed to speed up process startup
-model = None
-
-def get_model():
-    global model
-    if model is None:
-        from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-    return model
+from sentence_transformers import SentenceTransformer
 from controllers.Chat_controller import getRepoNameFromConversationId, fetch_all_conversations
 from controllers.code_controller import extract_function_names, get_file_code, create_chunk, extract_ui_text
 from config.config import GITHUB_TOKEN
@@ -22,6 +14,9 @@ auth = Auth.Token(GITHUB_TOKEN)
 
 
 g = Github(auth=auth)
+
+model = SentenceTransformer("all-MiniLM-L6-v2")
+
 
 IGNORE_DIRS = {
     ".git",
@@ -207,7 +202,7 @@ def upload_repo_on_qdrant(url):
             for i, chunk in enumerate(file["chunks"]):
                 if path.split("/")[-1] == "README.md":
                     search_text = f"file: {path.split('/')[-1]} content: {chunk}"
-                    vec = get_model().encode(search_text).tolist()
+                    vec = model.encode(search_text).tolist()
                     points.append(
                         PointStruct(
                             id=str(uuid.uuid4()),
@@ -232,7 +227,7 @@ def upload_repo_on_qdrant(url):
                     functions: {", ".join(Functions_name)}
                     ui_text: {UI_texts}
                 """
-                vec = get_model().encode(search_text).tolist()
+                vec = model.encode(search_text).tolist()
                 points.append(
                     PointStruct(
                         id=str(uuid.uuid4()),
@@ -271,7 +266,7 @@ def search_in_repo(query, conversation_id, top_k=5):
 
         search_text = f"repo: {repo_name}\n{query}"
 
-        vec = get_model().encode(search_text).tolist()
+        vec = model.encode(search_text).tolist()
 
         search_result = client.query_points(
             collection_name="repo_chunks",
