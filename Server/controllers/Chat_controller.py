@@ -9,7 +9,10 @@ engine = create_engine(
     echo=True,
     pool_pre_ping=True
 )
-SQLModel.metadata.create_all(engine)
+
+
+def init_db():
+    SQLModel.metadata.create_all(engine)
 
 
 def create_conversation(repo_url:str):

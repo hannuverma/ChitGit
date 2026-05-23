@@ -4,7 +4,7 @@ from qdrant_client.models import Document, VectorParams, Distance, PointStruct
 from sentence_transformers import SentenceTransformer
 from upload_worker import enqueue_upload_repo, get_job_status
 from pydanticModels import repoUrl, sendChatRequest, Message as MessageSchema
-from controllers.Chat_controller import fetch_all_messages_for_conversation, upload_chat_to_DB, create_conversation
+from controllers.Chat_controller import fetch_all_messages_for_conversation, upload_chat_to_DB, create_conversation, init_db
 from controllers.Repo_controller import search_in_repo, ensure_repo_chunks_collection, fetch_all_repos
 from controllers.Ai_first_layer import get_query_enhanced,final_ai_response
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,6 +35,10 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 
 @app.on_event("startup")
 def prepare_qdrant_indexes():
+    try:
+        init_db()
+    except Exception as exc:
+        print(f"Database initialization skipped during startup: {exc}")
     ensure_repo_chunks_collection()
 
 
