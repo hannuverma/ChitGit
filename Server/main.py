@@ -1,7 +1,5 @@
 from qdrant import client
 from fastapi import FastAPI, HTTPException
-from qdrant_client.models import Document, VectorParams, Distance, PointStruct
-from sentence_transformers import SentenceTransformer
 from upload_worker import enqueue_upload_repo, get_job_status
 from pydanticModels import repoUrl, sendChatRequest, Message as MessageSchema
 from controllers.Chat_controller import fetch_all_messages_for_conversation, upload_chat_to_DB, create_conversation, init_db
@@ -29,9 +27,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
 
 @app.on_event("startup")
 def prepare_qdrant_indexes():
