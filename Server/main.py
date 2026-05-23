@@ -9,18 +9,11 @@ from controllers.Repo_controller import search_in_repo, ensure_repo_chunks_colle
 from controllers.Ai_first_layer import get_query_enhanced,final_ai_response
 from fastapi.middleware.cors import CORSMiddleware
 from config.config import ENV
+import os
+import uvicorn
 origins = {
     "http://localhost:5173", "https://chit-git.vercel.app"
 }
-app = FastAPI();
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 IS_PRODUCTION = (ENV == "production")
 
 app = FastAPI(
@@ -28,6 +21,15 @@ app = FastAPI(
     redoc_url=None if IS_PRODUCTION else "/redoc",
     openapi_url=None if IS_PRODUCTION else "/openapi.json"
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
@@ -119,6 +121,14 @@ def post_chat(req: MessageSchema):
     db_message = upload_chat_to_DB(req)
     db_message_2 = upload_chat_to_DB(AiResponse)
     return {"message": "Chat message uploaded successfully", "enhanced_query": enhanced_user_query, "db_message": db_message, "search_result": search_result, "final_ai_answer": Final_ai, "db_message_2": db_message_2}
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "8000")),
+    )
 
 
 # points = []
