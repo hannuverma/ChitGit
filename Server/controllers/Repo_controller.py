@@ -15,7 +15,13 @@ auth = Auth.Token(GITHUB_TOKEN)
 
 g = Github(auth=auth)
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        _model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _model
 
 
 IGNORE_DIRS = {
@@ -202,7 +208,7 @@ def upload_repo_on_qdrant(url):
             for i, chunk in enumerate(file["chunks"]):
                 if path.split("/")[-1] == "README.md":
                     search_text = f"file: {path.split('/')[-1]} content: {chunk}"
-                    vec = model.encode(search_text).tolist()
+                    vec = get_model().encode(search_text).tolist()
                     points.append(
                         PointStruct(
                             id=str(uuid.uuid4()),
@@ -227,7 +233,7 @@ def upload_repo_on_qdrant(url):
                     functions: {", ".join(Functions_name)}
                     ui_text: {UI_texts}
                 """
-                vec = model.encode(search_text).tolist()
+                vec = get_model().encode(search_text).tolist()
                 points.append(
                     PointStruct(
                         id=str(uuid.uuid4()),
@@ -266,7 +272,7 @@ def search_in_repo(query, conversation_id, top_k=5):
 
         search_text = f"repo: {repo_name}\n{query}"
 
-        vec = model.encode(search_text).tolist()
+        vec = get_model().encode(search_text).tolist()
 
         search_result = client.query_points(
             collection_name="repo_chunks",
