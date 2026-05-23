@@ -8,7 +8,7 @@ from controllers.Chat_controller import fetch_all_messages_for_conversation, upl
 from controllers.Repo_controller import search_in_repo, ensure_repo_chunks_collection, fetch_all_repos
 from controllers.Ai_first_layer import get_query_enhanced,final_ai_response
 from fastapi.middleware.cors import CORSMiddleware
-
+from config.config import ENV
 origins = {
     "http://localhost:5173", "https://chit-git.vercel.app"
 }
@@ -21,7 +21,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+IS_PRODUCTION = (ENV == "production")
 
+app = FastAPI(
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json"
+)
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
