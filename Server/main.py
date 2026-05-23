@@ -10,7 +10,7 @@ from controllers.Ai_first_layer import get_query_enhanced,final_ai_response
 from fastapi.middleware.cors import CORSMiddleware
 
 origins = {
-    "http://localhost:5173", 
+    "http://localhost:5173", "https://chit-git.vercel.app"
 }
 app = FastAPI();
 

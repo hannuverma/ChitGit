@@ -2,8 +2,11 @@ from rq import Queue
 from redis import Redis
 from controllers.Repo_controller import upload_repo_on_qdrant
 from rq.job import Job
+from config.config import REDIS_URL
+# from upstash_redis import Redis
 
-redis_con = Redis(host="localhost", port=6379)
+# redis_con = Redis(host="localhost", port=6379)
+redis_con = Redis.from_url(REDIS_URL)
 q = Queue("default", connection=redis_con)
 
 
