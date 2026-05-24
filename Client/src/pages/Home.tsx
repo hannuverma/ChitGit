@@ -1,6 +1,6 @@
 import { SignOutButton } from "@clerk/react";
 import { PenLine } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import NewRepo from "../components/NewRepo";
 import RepoChat from "../components/RepoChat";
 import api from "../Api";
@@ -30,9 +30,9 @@ const Home = () => {
 		}
 	};
 
-	useEffect(() => {
+	useMemo(() => {
 		fetchRepos();
-	}, [newRepo]);
+	}, []);
 
 	const repoClickHandler = (repoName: string, conversationId: number) => {
 		setCurrRepo(repoName);
