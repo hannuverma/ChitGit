@@ -34,3 +34,5 @@ def get_job_status(job_id: str):
 
 
 # rq worker --worker-class rq.worker.SimpleWorker
+
+# rq worker default \ --url "rediss://default:gQAAAAAAARIgAAIgcDI1ZDU3M2E2MGEzOWE0MmJmYjA3YjE4NTAyODNkNmI2Ng@leading-goblin-70176.upstash.io:6379" \ -worker-class rq.worker.SimpleWorker
