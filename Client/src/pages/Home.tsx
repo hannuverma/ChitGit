@@ -1,6 +1,6 @@
 import { SignOutButton } from "@clerk/react";
 import { PenLine } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import NewRepo from "../components/NewRepo";
 import RepoChat from "../components/RepoChat";
 import api from "../Api";
