@@ -120,7 +120,7 @@ def post_chat(req: MessageSchema):
         role="assistant",
         content=Final_ai
         )
-    except Exception as e:
+    except Exception as e: 
         print(f"Error occurred while processing chat message: {e}")
         raise HTTPException(status_code=500, detail="An error occurred while processing the chat message.")
 
