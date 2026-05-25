@@ -42,6 +42,7 @@ const NewRepo = ({ setNewRepo, onUploadComplete }: ChildProps) => {
 			setUploading={setUploading}
 			jobId={jobId}
 			onUploadComplete={onUploadComplete}
+			repoUrl={repoUrl}
 		/>
 	) : (
 		<div className='w-full h-full flex flex-col gap-9 items-center justify-center'>

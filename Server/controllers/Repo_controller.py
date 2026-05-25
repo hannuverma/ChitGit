@@ -3,7 +3,7 @@ import uuid
 from github import Github
 from github import Auth
 from fastembed import TextEmbedding
-from controllers.Chat_controller import getRepoNameFromConversationId, fetch_all_conversations
+from controllers.Chat_controller import create_conversation, getRepoNameFromConversationId, fetch_all_conversations
 from controllers.code_controller import extract_function_names, get_file_code, create_chunk, extract_ui_text
 from config.config import GITHUB_TOKEN
 import os
@@ -11,6 +11,8 @@ from qdrant import client
 from qdrant_client.models import Document, VectorParams, Distance, PointStruct, PayloadSchemaType
 
 auth = Auth.Token(GITHUB_TOKEN)
+
+task_status = {}
 
 
 g = Github(auth=auth)
@@ -197,15 +199,19 @@ def create_data_for_embedding(repo_url):
 
 
 
+def get_task_status(task_id):
+    return task_status.get(task_id, "queued")
 
-def upload_repo_on_qdrant(url):
+
+def upload_repo_on_qdrant(url, task_id):
     try:
         print(f"Starting upload for repo at {url}")
         repo_name = normalize_repo_name(url)
-
+        task_status[task_id] = "checking_repo"
         ensure_repo_chunks_collection()
-
+        task_status[task_id] = "creating_chunks"
         chunk_data = create_data_for_embedding(url)
+        task_status[task_id] = "embedding_chunks"
         points = []
         for file in chunk_data["chunk_data"]:
             path = file["path"]
@@ -253,10 +259,10 @@ def upload_repo_on_qdrant(url):
                     )
 
                 )
+        task_status[task_id] = "uploading_chunks"        
         upsert_repo_chunks(points)
-
+        task_status[task_id] = "finished"
         print(f"Upload completed for repo at {url}")
-        
         return {"message": f"Repo at {url} uploaded successfully"}
     except Exception as e:
         print(f"Error occurred while uploading repo to Qdrant: {e}")

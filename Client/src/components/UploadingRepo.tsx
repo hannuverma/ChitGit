@@ -5,6 +5,7 @@ type ChildProps = {
 	setNewRepo: React.Dispatch<React.SetStateAction<boolean | null>>;
 	jobId: string | null;
 	onUploadComplete: () => void;
+	repoUrl: string;
 };
 
 const UploadingRepo = ({
@@ -12,7 +13,19 @@ const UploadingRepo = ({
 	setNewRepo,
 	jobId,
 	onUploadComplete,
+	repoUrl,
 }: ChildProps) => {
+
+	const createConversation = async (repoUrl: string) => {
+		try {
+			const res = await api.post('/chat/create_conversation', { url: repoUrl });
+			return res.data;
+		} catch (error) {
+			console.error("Error creating conversation:", error);
+			throw error;
+		}
+	};
+
 	const [status, setStatus] = useState<string>("");
 	useEffect(() => {
 		if (!jobId) return;
@@ -20,7 +33,8 @@ const UploadingRepo = ({
 		const interval = setInterval(async () => {
 			try {
 				const res = await api.get(`/job/${jobId}`);
-				const currentStatus = res.data?.status?.status;
+				console.log("Job status response:", res.data);
+				const currentStatus = res.data?.status;
 
 				if (currentStatus) {
 					setStatus(currentStatus);
@@ -31,6 +45,9 @@ const UploadingRepo = ({
 					setUploading(false);
 					setNewRepo(true);
 					onUploadComplete();
+					createConversation(repoUrl).catch((error) => {
+						console.error("Error creating conversation after upload:", error);
+					});
 				}
 			} catch (error) {
 				console.error("Error checking upload status:", error);

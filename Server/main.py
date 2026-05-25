@@ -1,14 +1,15 @@
 from qdrant import client
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from upload_worker import enqueue_upload_repo, get_job_status
 from pydanticModels import repoUrl, sendChatRequest, Message as MessageSchema
 from controllers.Chat_controller import fetch_all_messages_for_conversation, upload_chat_to_DB, create_conversation, init_db
-from controllers.Repo_controller import search_in_repo, ensure_repo_chunks_collection, fetch_all_repos
+from controllers.Repo_controller import get_task_status, search_in_repo, ensure_repo_chunks_collection, fetch_all_repos,upload_repo_on_qdrant
 from controllers.Ai_first_layer import get_query_enhanced,final_ai_response
 from fastapi.middleware.cors import CORSMiddleware
 from config.config import ENV
 import os
 import uvicorn
+import uuid
 origins = {
     "http://localhost:5173", "https://chit-git.vercel.app"
 }
@@ -71,10 +72,12 @@ def prepare_qdrant_indexes():
 
 ### REPO ROUTES ###
 @app.post('/repo')
-def upload_repo(req: repoUrl):
-    jobid = enqueue_upload_repo(req.url)
-    conversation = create_conversation(req.url)
-    return {"message": "Repo upload job enqueued successfully", "job_id": jobid, "conversation_id": conversation.id}
+def upload_repo(req: repoUrl,background_tasks: BackgroundTasks):
+    task_id = str(uuid.uuid4())
+    response = background_tasks.add_task(upload_repo_on_qdrant, req.url, task_id)
+    print(f"Background task for uploading repo enqueued: {response}")
+    # jobid = enqueue_upload_repo(req.url)
+    return {"message": "Repo upload job enqueued successfully", "job_id": task_id}
 
 @app.delete('/repo')
 def delete_repo(url: repoUrl):
@@ -88,14 +91,18 @@ def get_all_repos():
 ### JOB STATUS ###
 @app.get('/job/{job_id}')
 def job_status(job_id:str):
-    status = get_job_status(job_id)
-    return {"job_id": job_id, "status": status, "completed": status.get("status") == "finished"}
+    status = get_task_status(job_id)
+    return {"job_id": job_id, "status": status, "completed": status == "finished"}
 
 ### CHAT ROUTES ###
 @app.get('/chat/{conversation_id}')
 def fetch_chat(conversation_id: int):
     return fetch_all_messages_for_conversation(conversation_id)
 
+@app.post('/chat/create_conversation')
+def create_conversation_endpoint(req: repoUrl):
+    conversation = create_conversation(req.url)
+    return {"message": "Conversation created successfully", "conversation_id": conversation.id, "repo_name": conversation.repo_name}
 
 @app.post('/chat')
 def post_chat(req: MessageSchema):

@@ -3,6 +3,7 @@ from redis import Redis
 from controllers.Repo_controller import upload_repo_on_qdrant
 from rq.job import Job
 from config.config import REDIS_URL
+from fastapi import BackgroundTasks
 # from upstash_redis import Redis
 
 # redis_con = Redis(host="localhost", port=6379)
